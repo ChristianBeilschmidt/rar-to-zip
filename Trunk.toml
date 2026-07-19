@@ -9,7 +9,7 @@ ignore = ["target"]
 port = 8080
 open = false
 
-[[hooks.pre_build]]
+[[hooks]]
 stage = "build"
 command = "sh"
 command_arguments = ["-c", "npm run build:css"]
