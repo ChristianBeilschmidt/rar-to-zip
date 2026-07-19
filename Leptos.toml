@@ -1,0 +1,61 @@
+# Leptos Configuration File
+# This file contains build configuration for Leptos. See https://leptos-rs.github.io/leptos/01_getting_started.html
+
+[build]
+# The site root folder is where cargo-leptos generates all output. WARNING all content of this folder will be deleted on builds
+site-root = "target/site"
+
+# The site-root relative folder where cargo-leptos will build the JS files and WASM.
+site-pkg-dir = "pkg"
+
+# [Optional] Files in the asset-dir will be copied to the site-root directory
+# The assets-dir defaults to 'public' if not specified, and must be relative to the Cargo.toml file
+# the assets folder must exist in the project root to be built by cargo-leptos
+asset-dir = "public"
+
+# The IP and port (must be wrapped in quotes to be a string) where the server is running. Use it in your server setup.
+site-addr = "127.0.0.1:3000"
+
+# The port to use for automatic reload monitoring
+reload-port = 3001
+
+# [Optional] Command to use when running end to end tests. It will run in the end_to_end folder.
+#   [Windows Note] for non-Windows machines and the example, scripts use bash.
+#   You'll need to use `cmd /C` to run windows batch files.
+end-to-end-cmd = "playwright test"
+end-to-end-dir = "e2e"
+
+#  The browserlist query used for optimizing the CSS.
+browserquery = "defaults"
+
+# Set by cargo-leptos itself, controlling whether to interpret the project as a library or binary.
+lib = true
+
+# The features to use when compiling the bin target
+#   Optional. Can be over-ridden with the command line parameter --features
+bin-features = ["csr"]
+
+# If this is true, cargo-leptos will automatically instruct Cargo to build a bin alongside the lib
+# target. It might be a good idea to inspect what the bin does, so you can run it by your own discretion
+bin-default-features = true
+
+# The default environment. Defaults to "DEV"
+#environment = "DEV"
+
+# The environment Cargo will build with
+#build-environment = "DEV"
+
+# The environment Cargo will build with for the SSR binary
+#ssr-environment = "DEV"
+
+# All windows/linux/mac specific env. Build when stuck in windows and catering to windows user.
+# This could be a syntax error in windows run of cargo build/cargo leptos build os a code wrapped in
+#[cfg(windows)]
+# that breaks the linux builds.
+#[env.windows]
+
+[lib]
+name = "rar_to_zip_lib"
+
+[bin]
+name = "rar_to_zip"

@@ -3,11 +3,36 @@ name = "rar-to-zip"
 version = "0.1.0"
 edition = "2024"
 
-[lib]
-crate-type = ["cdylib"]
+[[bin]]
+name = "rar_to_zip"
+path = "src/main.rs"
 
 [dependencies]
+leptos = { version = "0.6", features = ["csr"] }
+leptos_meta = { version = "0.6" }
+leptos_router = { version = "0.6" }
 wasm-bindgen = "0.2"
 rars = "0.4"
 zip = "8.6"
 getrandom = { version = "0.2", features = ["js"] }
+web-sys = { version = "0.3", features = [
+    "Document",
+    "Element",
+    "HtmlElement",
+    "Window",
+    "File",
+    "FileList",
+    "Blob",
+    "BlobPropertyBag",
+    "Url",
+    "HtmlInputElement",
+    "DragEvent",
+    "DataTransfer",
+] }
+js-sys = "0.3"
+wasm-bindgen-futures = "0.4"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1

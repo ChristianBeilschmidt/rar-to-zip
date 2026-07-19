@@ -1,0 +1,16 @@
+{
+  "name": "rar-to-zip",
+  "version": "0.1.0",
+  "devDependencies": {
+    "tailwindcss": "^4.3.3",
+    "@tailwindcss/cli": "^4.3.3",
+    "postcss": "^8.4.31",
+    "autoprefixer": "^10.4.16"
+  },
+  "scripts": {
+    "build:css": "tailwindcss -i ./style.css -o ./tailwind.css --minify",
+    "watch:css": "tailwindcss -i ./style.css -o ./tailwind.css --watch",
+    "dev": "npm run build:css && trunk serve",
+    "build": "npm run build:css"
+  }
+}
