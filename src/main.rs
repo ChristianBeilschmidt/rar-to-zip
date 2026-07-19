@@ -1,4 +1,5 @@
-use leptos::*;
+use leptos::prelude::*;
+
 mod components;
 mod converter;
 

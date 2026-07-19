@@ -8,13 +8,13 @@ name = "rar_to_zip"
 path = "src/main.rs"
 
 [dependencies]
-leptos = { version = "0.6", features = ["csr"] }
-leptos_meta = { version = "0.6" }
-leptos_router = { version = "0.6" }
+leptos = { version = "0.8", features = ["csr"] }
+leptos_meta = { version = "0.8" }
+leptos_router = { version = "0.8" }
 wasm-bindgen = "0.2"
 rars = "0.4"
 zip = "8.6"
-getrandom = { version = "0.2", features = ["js"] }
+getrandom = { version = "0.4", features = ["wasm_js"] }
 web-sys = { version = "0.3", features = [
     "Document",
     "Element",

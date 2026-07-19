@@ -1,29 +1,31 @@
 use crate::converter::convert_rar_to_zip;
 use js_sys::Uint8Array;
-use leptos::*;
+use leptos::component;
+use leptos::html::*;
+use leptos::prelude::*;
+use leptos::task::spawn_local;
 use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Blob, File};
 
 #[component]
 pub fn App() -> impl IntoView {
-    let (file_name, set_file_name) = create_signal::<String>(String::new());
-    let (is_converting, set_is_converting) = create_signal(false);
-    let (error_message, set_error_message) = create_signal::<String>(String::new());
-    let (success_message, set_success_message) = create_signal::<String>(String::new());
-    let (zip_data, set_zip_data) = create_signal::<Option<Vec<u8>>>(None);
+    let (file_name, set_file_name) = signal::<String>(String::new());
+    let (is_converting, set_is_converting) = signal(false);
+    let (error_message, set_error_message) = signal::<String>(String::new());
+    let (success_message, set_success_message) = signal::<String>(String::new());
+    let (zip_data, set_zip_data) = signal::<Option<Vec<u8>>>(None);
 
     let handle_file_input = move |ev: web_sys::Event| {
         let target = ev.target().unwrap();
         let input = target.dyn_into::<web_sys::HtmlInputElement>().unwrap();
-        if let Some(files) = input.files() {
-            if files.length() > 0 {
-                if let Some(file) = files.get(0) {
-                    set_file_name.set(file.name());
-                    set_error_message.set(String::new());
-                    set_success_message.set(String::new());
-                }
-            }
+        if let Some(files) = input.files()
+            && files.length() > 0
+            && let Some(file) = files.get(0)
+        {
+            set_file_name.set(file.name());
+            set_error_message.set(String::new());
+            set_success_message.set(String::new());
         }
     };
 
@@ -41,46 +43,40 @@ pub fn App() -> impl IntoView {
         ev.prevent_default();
         ev.stop_propagation();
 
-        if let Some(data_transfer) = ev.data_transfer() {
-            if let Some(files) = data_transfer.files() {
-                if files.length() > 0 {
-                    if let Some(file) = files.get(0) {
-                        let file_name_str = file.name();
-                        if file_name_str.to_lowercase().ends_with(".rar") {
-                            set_file_name.set(file_name_str.clone());
-                            set_error_message.set(String::new());
-                            set_success_message.set(String::new());
+        if let Some(data_transfer) = ev.data_transfer()
+            && let Some(files) = data_transfer.files()
+            && files.length() > 0
+            && let Some(file) = files.get(0)
+        {
+            let file_name_str = file.name();
+            if file_name_str.to_lowercase().ends_with(".rar") {
+                set_file_name.set(file_name_str.clone());
+                set_error_message.set(String::new());
+                set_success_message.set(String::new());
 
-                            // Store the dropped file for conversion
-                            set_is_converting.set(true);
-                            let file = file.clone();
-                            spawn_local(async move {
-                                match read_file_as_bytes(&file).await {
-                                    Ok(rar_bytes) => match convert_rar_to_zip(&rar_bytes) {
-                                        Ok(zip_bytes) => {
-                                            set_zip_data.set(Some(zip_bytes));
-                                            set_success_message.set(
-                                                "✓ Conversion successful! Ready to download."
-                                                    .to_string(),
-                                            );
-                                        }
-                                        Err(e) => {
-                                            set_error_message
-                                                .set(format!("❌ Conversion failed: {}", e));
-                                        }
-                                    },
-                                    Err(e) => {
-                                        set_error_message
-                                            .set(format!("❌ Failed to read file: {}", e));
-                                    }
-                                }
-                                set_is_converting.set(false);
-                            });
-                        } else {
-                            set_error_message.set("❌ Only .rar files are accepted".to_string());
+                // Store the dropped file for conversion
+                set_is_converting.set(true);
+                let file = file.clone();
+                spawn_local(async move {
+                    match read_file_as_bytes(&file).await {
+                        Ok(rar_bytes) => match convert_rar_to_zip(&rar_bytes) {
+                            Ok(zip_bytes) => {
+                                set_zip_data.set(Some(zip_bytes));
+                                set_success_message
+                                    .set("✓ Conversion successful! Ready to download.".to_string());
+                            }
+                            Err(e) => {
+                                set_error_message.set(format!("❌ Conversion failed: {}", e));
+                            }
+                        },
+                        Err(e) => {
+                            set_error_message.set(format!("❌ Failed to read file: {}", e));
                         }
                     }
-                }
+                    set_is_converting.set(false);
+                });
+            } else {
+                set_error_message.set("❌ Only .rar files are accepted".to_string());
             }
         }
     };
@@ -122,7 +118,7 @@ pub fn App() -> impl IntoView {
                                         .and_then(|d| d.get_element_by_id("rar-input"))
                                         .and_then(|el| el.dyn_into::<web_sys::HtmlInputElement>().ok())
                                     {
-                                        let _ = input.click();
+                                        input.click();
                                     }
                                 }
                                 on:dragover=handle_drag_over
@@ -143,79 +139,46 @@ pub fn App() -> impl IntoView {
                                 on:change=handle_file_input
                                 class="hidden"
                             />
-                            {move || {
-                                let name = file_name.get();
-                                if !name.is_empty() {
-                                    view! {
-                                        <p class="mt-3 text-sm text-green-600 font-medium">
-                                            "✓ " {name}
-                                        </p>
-                                    }.into_view()
-                                } else {
-                                    "".into_view()
-                                }
-                            }}
+                            <Show when=move || !file_name.get().is_empty()>
+                                <p class="mt-3 text-sm text-green-600 font-medium">
+                                    "✓ " {move || file_name.get()}
+                                </p>
+                            </Show>
                         </div>
 
                         {/* Error Message */}
-                        {move || {
-                            let msg = error_message.get();
-                            if !msg.is_empty() {
-                                view! {
-                                    <div class="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                                        {msg}
-                                    </div>
-                                }.into_view()
-                            } else {
-                                "".into_view()
-                            }
-                        }}
+                        <Show when=move || !error_message.get().is_empty()>
+                            <div class="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                                {move || error_message.get()}
+                            </div>
+                        </Show>
 
                         {/* Success Message */}
-                        {move || {
-                            let msg = success_message.get();
-                            if !msg.is_empty() {
-                                view! {
-                                    <div class="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
-                                        {msg}
-                                    </div>
-                                }.into_view()
-                            } else {
-                                "".into_view()
-                            }
-                        }}
+                        <Show when=move || !success_message.get().is_empty()>
+                            <div class="p-4 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+                                {move || success_message.get()}
+                            </div>
+                        </Show>
 
                         {/* Converting Status */}
-                        {move || {
-                            if is_converting.get() {
-                                view! {
-                                    <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm flex items-center justify-center gap-2">
-                                        <span class="inline-block animate-spin">
-                                            "⚙️"
-                                        </span>
-                                        "Converting..."
-                                    </div>
-                                }.into_view()
-                            } else {
-                                "".into_view()
-                            }
-                        }}
+                        <Show when=move || is_converting.get()>
+                            <div class="p-4 bg-blue-50 border border-blue-200 rounded-lg text-blue-700 text-sm flex items-center justify-center gap-2">
+                                <span class="inline-block animate-spin">
+                                    "⚙️"
+                                </span>
+                                "Converting..."
+                            </div>
+                        </Show>
 
                         {/* Download Button */}
-                        {move || {
-                            if zip_data.get().is_some() {
-                                view! {
-                                    <button
-                                        on:click=handle_download
-                                        class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2"
-                                    >
-                                        "⬇️ Download ZIP"
-                                    </button>
-                                }.into_view()
-                            } else {
-                                "".into_view()
-                            }
-                        }}
+                        <Show when=move || zip_data.get().is_some()>
+                            <button
+                                on:click=handle_download
+                                class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 flex items-center justify-center gap-2"
+                            >
+                                "⬇️ Download ZIP"
+                            </button>
+                        </Show>
                     </div>
 
                     <p class="mt-6 text-center text-xs text-slate-500">
