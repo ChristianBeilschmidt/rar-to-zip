@@ -1,13 +1,25 @@
+use anyhow::{Context, Result};
+use js_sys::Uint8Array;
+use std::cell::RefCell;
 use std::io::{Cursor, Write};
 use std::rc::Rc;
-use std::cell::RefCell;
+use wasm_bindgen_futures::JsFuture;
+use web_sys::File;
 use zip::ZipWriter;
 use zip::write::FileOptions;
+
+pub type ZipData = Vec<u8>;
 
 /// A custom writer that owns its buffer and can be safely boxed.
 /// This avoids lifetime issues with Cursor which borrows its data.
 pub struct VecWriter {
-    pub data: Rc<RefCell<Vec<u8>>>,
+    pub data: Rc<RefCell<ZipData>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct ZipFile {
+    pub name: String,
+    pub data: Vec<u8>,
 }
 
 impl Write for VecWriter {
@@ -22,10 +34,9 @@ impl Write for VecWriter {
 }
 
 /// Convert RAR archive bytes to ZIP archive bytes
-pub fn convert_rar_to_zip(rar_bytes: &[u8]) -> Result<Vec<u8>, String> {
+pub fn convert_rar_to_zip(rar_bytes: &[u8]) -> Result<ZipData> {
     // Parse the RAR archive from bytes
-    let archive = rars::ArchiveReader::read(rar_bytes)
-        .map_err(|e| format!("Failed to parse RAR archive: {}", e))?;
+    let archive = rars::ArchiveReader::read(rar_bytes).context("Failed to parse RAR archive")?;
 
     // Collect extracted files as (filename, data)
     let files = RefCell::new(Vec::new());
@@ -47,7 +58,7 @@ pub fn convert_rar_to_zip(rar_bytes: &[u8]) -> Result<Vec<u8>, String> {
             // Return boxed writer that writes to the Rc<RefCell<Vec<u8>>>
             Ok(Box::new(VecWriter { data: file_data }))
         })
-        .map_err(|e| format!("Failed to extract RAR archive: {}", e))?;
+        .context("Failed to extract RAR archive")?;
 
     // Create ZIP archive and write all extracted files
     let mut zip_buf = Vec::new();
@@ -57,20 +68,42 @@ pub fn convert_rar_to_zip(rar_bytes: &[u8]) -> Result<Vec<u8>, String> {
         for (filename, file_data_rc) in files.into_inner() {
             // Borrow the data from the RefCell (Rc is dropped at end of loop)
             let file_data = file_data_rc.borrow().clone();
-            
-            let options: FileOptions<()> = FileOptions::default()
-                .compression_method(zip::CompressionMethod::Deflated);
+
+            let options: FileOptions<()> =
+                FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
             zip.start_file(&filename, options)
-                .map_err(|e| format!("Failed to create ZIP entry '{}': {}", filename, e))?;
+                .with_context(|| format!("Failed to create ZIP entry '{}'", filename))?;
 
             zip.write_all(&file_data)
-                .map_err(|e| format!("Failed to write file '{}' to ZIP: {}", filename, e))?;
+                .with_context(|| format!("Failed to write file '{}' to ZIP", filename))?;
         }
 
-        zip.finish()
-            .map_err(|e| format!("Failed to finalize ZIP archive: {}", e))?;
+        zip.finish().context("Failed to finalize ZIP archive")?;
     }
 
     Ok(zip_buf)
+}
+
+/// Read a File as bytes
+pub async fn read_file_as_bytes(file: &File) -> Result<Vec<u8>> {
+    let array_buffer = JsFuture::from(file.array_buffer())
+        .await
+        .map_err(|_| anyhow::anyhow!("Failed to read file as array buffer"))?;
+
+    let array = Uint8Array::new(&array_buffer);
+    Ok(array.to_vec())
+}
+
+/// Convert RAR file to ZIP with error handling
+pub async fn convert_file(file: &File) -> Result<ZipFile> {
+    let rar_bytes = read_file_as_bytes(file).await?;
+    let data = convert_rar_to_zip(&rar_bytes)?;
+    let name = file
+        .name()
+        .trim_end_matches(".rar")
+        .trim_end_matches(".RAR")
+        .to_string()
+        + ".zip";
+    Ok(ZipFile { name, data })
 }

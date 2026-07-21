@@ -2,6 +2,7 @@ use leptos::prelude::*;
 
 mod components;
 mod converter;
+mod utils;
 
 use components::App;
 
